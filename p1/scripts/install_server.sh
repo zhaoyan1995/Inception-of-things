@@ -20,6 +20,21 @@ if ! systemctl is-active --quiet k3s; then
     systemctl start k3s
 fi
 
+echo "Waiting for Kubernetes API..."
+
+for i in {1..60}; do
+    if k3s kubectl get nodes >/dev/null 2>&1; then
+        echo "Kubernetes API is ready."
+        break
+    fi
+    sleep 2
+done
+
+if ! k3s kubectl get nodes >/dev/null 2>&1; then
+    echo "Error: Kubernetes API is not ready." >&2
+    exit 1
+fi
+
 TOKEN_FILE="/var/lib/rancher/k3s/server/node-token"
 
 for i in {1..60}; do
