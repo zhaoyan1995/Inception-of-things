@@ -6,16 +6,7 @@ SERVER_IP="192.168.56.110"
 
 WORKER_IP="192.168.56.111"
 
-: "${K3S_TOKEN:?K3S_TOKEN is required}"
-
 K3S_URL="https://${SERVER_IP}:6443"
-
-echo "Preparing K3s Agent on $WORKER_IP..."
-
-curl -sfL https://get.k3s.io/ | \
-  K3S_URL="$K3S_URL" \
-  K3S_TOKEN="$K3S_TOKEN" \
-  sh -s - agent --node-ip "$WORKER_IP"
 
 TOKEN_FILE="/vagrant/.secrets/node-token"
 for i in {1..60}; do
@@ -33,6 +24,16 @@ fi
 K3S_TOKEN="$(< "$TOKEN_FILE")"
 
 echo "K3s Agent installed successfully."
+: "${K3S_TOKEN:?K3S_TOKEN is required}"
+
+K3S_URL="https://${SERVER_IP}:6443"
+
+echo "Preparing K3s Agent on $WORKER_IP..."
+
+curl -sfL https://get.k3s.io/ | \
+  K3S_URL="$K3S_URL" \
+  K3S_TOKEN="$K3S_TOKEN" \
+  sh -s - agent --node-ip "$WORKER_IP"
 
 rm -f "$TOKEN_FILE"
 
