@@ -1,13 +1,15 @@
+
 #!/usr/bin/env bash
 
 set -euo pipefail
 
 SERVER_IP="192.168.56.110"
-
 WORKER_IP="192.168.56.111"
 
 K3S_URL="https://${SERVER_IP}:6443"
+TOKEN_FILE="/vagrant/.secrets/node-token"
 
+# Agent already installed
 if systemctl list-unit-files k3s-agent.service --no-legend 2>/dev/null | grep -q '^k3s-agent.service'; then
     echo "K3s Agent is already installed."
 
@@ -16,10 +18,13 @@ if systemctl list-unit-files k3s-agent.service --no-legend 2>/dev/null | grep -q
         systemctl start k3s-agent
     fi
 
+    rm -f "$TOKEN_FILE"
     exit 0
 fi
 
-TOKEN_FILE="/vagrant/.secrets/node-token"
+echo "Preparing K3s Agent on $WORKER_IP..."
+
+# Wait for token
 for i in {1..60}; do
     if [[ -s "$TOKEN_FILE" ]]; then
         echo "Token file is ready."
@@ -32,21 +37,18 @@ if [[ ! -s "$TOKEN_FILE" ]]; then
     echo "Error: Token file not found." >&2
     exit 1
 fi
-K3S_TOKEN="$(< "$TOKEN_FILE")"
 
-echo "K3s Agent installed successfully."
+# Read token
+K3S_TOKEN="$(< "$TOKEN_FILE")"
 : "${K3S_TOKEN:?K3S_TOKEN is required}"
 
-K3S_URL="https://${SERVER_IP}:6443"
+# Install Agent
+curl -sfL https://get.k3s.io | \
+    K3S_URL="$K3S_URL" \
+    K3S_TOKEN="$K3S_TOKEN" \
+    sh -s - agent --node-ip "$WORKER_IP"
 
-echo "Preparing K3s Agent on $WORKER_IP..."
+echo "K3s Agent installed successfully."
 
-curl -sfL https://get.k3s.io/ | \
-  K3S_URL="$K3S_URL" \
-  K3S_TOKEN="$K3S_TOKEN" \
-  sh -s - agent --node-ip "$WORKER_IP"
-
+# Remove temporary token
 rm -f "$TOKEN_FILE"
-
-
-
