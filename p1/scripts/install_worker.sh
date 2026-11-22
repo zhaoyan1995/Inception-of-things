@@ -12,6 +12,10 @@ K3S_URL="https://${SERVER_IP}:6443"
 
 echo "Preparing K3s Agent on $WORKER_IP..."
 
+curl -sfL https://get.k3s.io/ | \
+  K3S_URL="$K3S_URL" \
+  K3S_TOKEN="$K3S_TOKEN" \
+  sh -s - agent --node-ip "$WORKER_IP"
 
 
 
