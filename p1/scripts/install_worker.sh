@@ -8,6 +8,17 @@ WORKER_IP="192.168.56.111"
 
 K3S_URL="https://${SERVER_IP}:6443"
 
+if systemctl list-unit-files k3s-agent.service --no-legend 2>/dev/null | grep -q '^k3s-agent.service'; then
+    echo "K3s Agent is already installed."
+
+    if ! systemctl is-active --quiet k3s-agent; then
+        echo "Starting K3s Agent..."
+        systemctl start k3s-agent
+    fi
+
+    exit 0
+fi
+
 TOKEN_FILE="/vagrant/.secrets/node-token"
 for i in {1..60}; do
     if [[ -s "$TOKEN_FILE" ]]; then
