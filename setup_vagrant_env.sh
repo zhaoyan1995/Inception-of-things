@@ -3,6 +3,7 @@
 set -euo pipefail
 
 VAGRANT_DIR="/goinfre/$USER/vagrant"
+VIRTUALBOX_DIR="/goinfre/$USER/VirtualBox VMs"
 
 echo "Configuring Vagrant environment..."
 
@@ -12,8 +13,20 @@ if ! mountpoint -q /goinfre; then
     exit 1
 fi
 
-# Create Vagrant storage directory
+# Create storage directories
 mkdir -p "$VAGRANT_DIR"
+mkdir -p "$VIRTUALBOX_DIR"
+
+# Configure Vagrant storage
+export VAGRANT_HOME="$VAGRANT_DIR"
+
+# Configure VirtualBox default machine folder
+if ! command -v VBoxManage >/dev/null 2>&1; then
+    echo "Error: VBoxManage is not installed or not in PATH."
+    exit 1
+fi
+
+VBoxManage setproperty machinefolder "$VIRTUALBOX_DIR"
 
 # Configure Bash
 BASH_CONFIG="$HOME/.bashrc"
@@ -41,8 +54,44 @@ cat > "$FISH_CONFIG" <<'EOF'
 set -gx VAGRANT_HOME "/goinfre/$USER/vagrant"
 EOF
 
-echo "VAGRANT_HOME configured successfully!"
-echo "Location: $VAGRANT_DIR"
+# Check inaccessible VirtualBox VMs
+
+cleanup_inaccessible_vms() {
+    echo ""
+    echo "Checking inaccessible VirtualBox VMs..."
+
+    local line
+    local uuid
+    local answer
+
+    while IFS= read -r line; do
+        if [[ "$line" == *"<inaccessible>"* ]]; then
+            uuid=$(echo "$line" | grep -oE '\{[^}]+\}' | tr -d '{}')
+
+            echo ""
+            echo "Found inaccessible VM: $uuid"
+
+            read -r -p "Remove its registration only? [y/N] " answer </dev/tty
+
+            if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
+                if VBoxManage unregistervm "$uuid"; then
+                    echo "Registration removed: $uuid"
+                else
+                    echo "Error: Failed to unregister $uuid"
+                fi
+            else
+                echo "Skipped: $uuid"
+            fi
+        fi
+    done < <(VBoxManage list vms)
+}
+
+cleanup_inaccessible_vms
+
+echo ""
+echo "Vagrant environment configured successfully!"
+echo "VAGRANT_HOME: $VAGRANT_HOME"
+echo "VirtualBox VM directory: $VIRTUALBOX_DIR"
 echo "Supported shells: Bash, Zsh, Fish"
 echo "Please restart your terminal or reload your shell configuration."
 
