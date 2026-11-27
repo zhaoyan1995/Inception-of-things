@@ -121,7 +121,7 @@ echo "Waiting for playground to be ready..."
 
 kubectl rollout status deployment/wil-playground \
     -n dev \
-    --timeout=300s
+    --timeout=600s
 
 # 8. Verify deployment
 
